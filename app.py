@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 
+# --- 기본 상수 ---
 GANS = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계']
 ZIS = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해']
 
@@ -80,26 +81,59 @@ ILJU_FEATURE = {
     "계해": "성실하며 끈기와 인내력이 장점입니다."
 }
 
-REFERENCE_DATE = datetime.date(1984, 2, 2)  # 1984-02-02는 갑자일(만세력 표준)
-REFERENCE_INDEX = 0  # '갑자'일
-OFFSET = 49  # 네이버 만세력 기준 병자일 맞춤값
+# --- 일주(일간/일지) 계산: 검증 가능한 기준으로 고정 ---
+# 날짜만으로 일주를 계산하려면 “어떤 달력/기준”인지가 고정돼야 합니다.
+# 여기서는 널리 쓰이는 기준 중 하나인 *그레고리력 날짜*를 받아
+# 'Julian Day Number' 기반으로 간지를 계산합니다.
+#
+# 주의:
+# - 만세력 서비스마다 (자시 경계, 절기/음력, 표준시) 정의가 달라 결과가 달라질 수 있습니다.
+# - 사용자가 요구한 것처럼 '시간 없이 날짜만'을 전제로 하므로, 경계(자정/자시) 보정은 하지 않습니다.
 
-def get_ganji_index(since):
-    delta = (since - REFERENCE_DATE).days
-    idx = (REFERENCE_INDEX + delta + OFFSET) % 60
-    stem_index = idx % 10
-    branch_index = idx % 12
-    return stem_index, branch_index
+
+def gregorian_to_jdn(date_: datetime.date) -> int:
+    """Gregorian calendar date -> Julian Day Number (JDN).
+
+    Returns the JDN for 0:00 (midnight) of the given date.
+    Reference: standard integer arithmetic algorithm.
+    """
+    a = (14 - date_.month) // 12
+    y = date_.year + 4800 - a
+    m = date_.month + 12 * a - 3
+    jdn = date_.day + ((153 * m + 2) // 5) + 365 * y + (y // 4) - (y // 100) + (y // 400) - 32045
+    return jdn
+
 
 def calc_ilju(year, month, day):
     try:
         birth = datetime.date(int(year), int(month), int(day))
     except Exception:
         return None, None
-    stem_idx, branch_idx = get_ganji_index(birth)
-    ilgan = GANS[stem_idx]
-    ilju = f"{ilgan}{ZIS[branch_idx]}"
+
+    jdn = gregorian_to_jdn(birth)
+
+    # --- 간지 산출 규칙 ---
+    # 60갑자는 10간/12지의 조합이며, JDN의 모듈러 연산으로 일진을 산출할 수 있습니다.
+    # 다만 '어느 JDN이 갑자일인가'라는 기준점이 필요합니다.
+    #
+    # 이 앱은 기존 코드가 사용하던 기준점(1984-02-02를 갑자일로 보는 가정)을 제거하고,
+    # JDN 기준점 기반 계산으로 단순화했습니다.
+    #
+    # 만약 외부 만세력(네이버/한국천문연구원/특정 만세력 앱)과 1:1로 맞추려면
+    # 그 서비스가 사용하는 기준점에 맞춰 아래 오프셋을 조정해야 합니다.
+
+    # JDN 기준점 보정(서비스 간 차이 흡수용). 기본값 0.
+    DAY_OFFSET = 0
+
+    # Heavenly Stem index (0..9), Earthly Branch index (0..11)
+    # 아래 식은 널리 쓰이는 형태 중 하나입니다.
+    stem_index = (jdn + DAY_OFFSET + 9) % 10
+    branch_index = (jdn + DAY_OFFSET + 1) % 12
+
+    ilgan = GANS[stem_index]
+    ilju = f"{ilgan}{ZIS[branch_index]}"
     return ilgan, ilju
+
 
 st.title("사주 일주 & 일간 물상 해설 앱")
 
