@@ -1,11 +1,9 @@
-from flask import Flask, render_template_string, request
+import streamlit as st
 import datetime
-
-app = Flask(__name__)
 
 GANS = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계']
 ZIS = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해']
-# 일간의 물상 이모지 매핑
+
 GAN_EMOJI = {
     '갑': '🌳',  # 나무
     '을': '🌱',  # 새싹
@@ -38,29 +36,22 @@ def calc_ilju(year, month, day):
     ilju = f"{ilgan}{ZIS[branch_idx]}"
     return ilgan, ilju
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    result = ""
-    if request.method == 'POST':
-        year = request.form.get('year')
-        month = request.form.get('month')
-        day = request.form.get('day')
-        ilgan, ilju = calc_ilju(year, month, day)
-        if ilju:
-            emoji = GAN_EMOJI.get(ilgan, '')
-            result = f"당신의 일주는 <b>{ilju}</b>입니다.<br>일간: <b>{ilgan}</b> {emoji}"
-        else:
-            result = "입력이 올바르지 않습니다."
-    return render_template_string("""
-        <h2>사주 일주(干支) & 일간 물상 이모지 계산기</h2>
-        <form method="post">
-          생년: <input type="number" name="year" required> 년<br>
-          월: <input type="number" name="month" required> 월<br>
-          일: <input type="number" name="day" required> 일<br>
-          <input type="submit" value="계산">
-        </form>
-        <p>{{result|safe}}</p>
-    """, result=result)
+st.title("사주 일주(干支) & 일간 물상 이모지 계산기")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+with st.form("input_form"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        year = st.number_input("생년", min_value=1900, max_value=2100, value=2000, step=1)
+    with col2:
+        month = st.number_input("월", min_value=1, max_value=12, value=1, step=1)
+    with col3:
+        day = st.number_input("일", min_value=1, max_value=31, value=1, step=1)
+    submitted = st.form_submit_button("계산")
+
+if submitted:
+    ilgan, ilju = calc_ilju(year, month, day)
+    if ilju:
+        emoji = GAN_EMOJI.get(ilgan, '')
+        st.success(f"당신의 일주는 **{ilju}** 입니다.  \n일간: **{ilgan}** {emoji}")
+    else:
+        st.error("입력이 올바르지 않습니다.")
