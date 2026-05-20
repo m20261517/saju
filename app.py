@@ -82,10 +82,11 @@ ILJU_FEATURE = {
 
 REFERENCE_DATE = datetime.date(1984, 2, 2)  # 1984-02-02는 갑자일(만세력 표준)
 REFERENCE_INDEX = 0  # '갑자'일
+OFFSET = 49  # 네이버 만세력 기준 병자일 맞춤값
 
 def get_ganji_index(since):
     delta = (since - REFERENCE_DATE).days
-    idx = (REFERENCE_INDEX + delta) % 60
+    idx = (REFERENCE_INDEX + delta + OFFSET) % 60
     stem_index = idx % 10
     branch_index = idx % 12
     return stem_index, branch_index
